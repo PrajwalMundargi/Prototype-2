@@ -6,7 +6,6 @@ import { toast } from "@/hooks/use-toast"
  
 
 export default function Component() {
-  
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mousePositionRef = useRef({ x: 0, y: 0 })
   const isTouchingRef = useRef(false)
@@ -17,7 +16,22 @@ export default function Component() {
   const startTimeRef = useRef(0)
   const supBoundsRef = useRef({ minX: 0, minY: 0, maxX: 0, maxY: 0, pad: 28 })
   const [menuTop, setMenuTop] = useState<number | null>(null)
+  const scrollProgressRef = useRef(0)
   const { theme, setTheme } = useTheme()
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const doc = document.documentElement
+      const scrollTop = window.scrollY ?? doc.scrollTop
+      const maxScroll = Math.max(doc.scrollHeight - window.innerHeight, 1)
+      const progress = Math.min(Math.max(scrollTop / maxScroll, 0), 1)
+      scrollProgressRef.current = progress
+    }
+
+    handleScroll()
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -46,8 +60,8 @@ export default function Component() {
       scatteredColor: string
       life: number
       isAWS: boolean
-      delay: number // seconds before movement toward base starts
-      dur: number // seconds to fully reach target (before settling)
+      delay: number
+      dur: number
       twinklePhase: number
       gPhase: number
       gFreq: number
@@ -55,6 +69,10 @@ export default function Component() {
       dPhase: number
       dFreq: number
       dAmp: number
+      backgroundX?: number
+      backgroundY?: number
+      disperseStart?: number
+      disperseEnd?: number
     }[] = []
 
     let textImageData: ImageData | null = null
@@ -111,6 +129,21 @@ export default function Component() {
       return 1
     }
 
+    const initializeParticle = (p: (typeof particles)[number]) => {
+      if (!canvas) return
+      const { minY, maxY } = supBoundsRef.current
+      const spanY = Math.max(maxY - minY, 1)
+      const yRatio = (p.baseY - minY) / spanY
+
+      p.backgroundX = Math.random() * canvas.width
+      p.backgroundY = Math.random() * canvas.height
+
+      const start = yRatio * 0.7
+      const end = Math.min(start + 0.25, 1)
+      p.disperseStart = start
+      p.disperseEnd = end
+    }
+
     function createParticle(scatter: boolean) {
       if (!ctx || !canvas || !textImageData) return null
       const data = textImageData.data
@@ -125,7 +158,7 @@ export default function Component() {
           const dur = (isMobile ? 3.2 : 5.5) + Math.random() * (isMobile ? 1.4 : 2.0)
           const delay = (isMobile ? 0.8 : 1.2) + Math.random() * (isMobile ? 1.4 : 2.0)
 
-          return {
+          const particle = {
             x: startX,
             y: startY,
             startX,
@@ -147,6 +180,8 @@ export default function Component() {
             dFreq: 0.25 + Math.random() * 0.35,
             dAmp: isMobile ? 3 + Math.random() * 4 : 5 + Math.random() * 7,
           }
+          initializeParticle(particle)
+          return particle
         }
       }
       return null
@@ -171,6 +206,9 @@ export default function Component() {
           if (p.baseY > maxY) maxY = p.baseY
         }
         supBoundsRef.current = { minX, minY, maxX, maxY, pad: isMobile ? 24 : 32 }
+        for (const p of particles) {
+          initializeParticle(p)
+        }
         updateMenuPosition()
       }
     }
@@ -192,6 +230,7 @@ export default function Component() {
 
       const { x: mouseX, y: mouseY } = mousePositionRef.current
       const maxDistance = 220
+      const disperseGlobal = scrollProgressRef.current
 
       const b = supBoundsRef.current
       const pointerInsideSup =
@@ -222,6 +261,20 @@ export default function Component() {
             targetY += Math.cos(timeSec * (p.gFreq * 0.9) + p.gPhase * 1.2) * amp
           }
         }
+
+        let disperseLocal = 0
+        if (typeof p.disperseStart === "number" && typeof p.disperseEnd === "number") {
+          const start = p.disperseStart
+          const end = p.disperseEnd
+          const span = Math.max(end - start, 0.0001)
+          disperseLocal = clamp((disperseGlobal - start) / span, 0, 1)
+        }
+
+        const bgX = p.backgroundX ?? p.baseX
+        const bgY = p.backgroundY ?? p.baseY
+
+        targetX = lerp(targetX, bgX, disperseLocal)
+        targetY = lerp(targetY, bgY, disperseLocal)
 
         const dx = mouseX - p.x
         const dy = mouseY - p.y
@@ -318,19 +371,19 @@ export default function Component() {
     }
 
     window.addEventListener("resize", handleResize)
-    canvas.addEventListener("mousemove", handleMouseMove)
-    canvas.addEventListener("touchmove", handleTouchMove, { passive: false })
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("touchmove", handleTouchMove, { passive: false })
     canvas.addEventListener("mouseleave", handleMouseLeave)
-    canvas.addEventListener("touchstart", handleTouchStart)
-    canvas.addEventListener("touchend", handleTouchEnd)
+    window.addEventListener("touchstart", handleTouchStart)
+    window.addEventListener("touchend", handleTouchEnd)
 
     return () => {
       window.removeEventListener("resize", handleResize)
-      canvas.removeEventListener("mousemove", handleMouseMove)
-      canvas.removeEventListener("touchmove", handleTouchMove)
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("touchmove", handleTouchMove)
       canvas.removeEventListener("mouseleave", handleMouseLeave)
-      canvas.removeEventListener("touchstart", handleTouchStart)
-      canvas.removeEventListener("touchend", handleTouchEnd)
+      window.removeEventListener("touchstart", handleTouchStart)
+      window.removeEventListener("touchend", handleTouchEnd)
       cancelAnimationFrame(animationFrameId)
     }
   }, [isMobile])
@@ -367,7 +420,7 @@ export default function Component() {
   }, [isMenuOpen])
 
   return (
-    <div className="relative w-full h-dvh flex flex-col items-center justify-center bg-black">
+    <div className="fixed inset-0 w-full h-dvh flex flex-col items-center justify-center">
       <canvas
         ref={canvasRef}
         className="w-full h-full absolute top-0 left-0 touch-none"
