@@ -231,6 +231,7 @@ export default function Component() {
       const { x: mouseX, y: mouseY } = mousePositionRef.current
       const maxDistance = 220
       const disperseGlobal = scrollProgressRef.current
+      const settledFactor = clamp((disperseGlobal - 0.9) / 0.1, 0, 1)
 
       const b = supBoundsRef.current
       const pointerInsideSup =
@@ -244,23 +245,10 @@ export default function Component() {
         const eased = easeOutQuint(t)
 
         const timeSec = now / 1000
-        const driftScale = 1 - eased
+        const baseDriftScale = 1 - eased
 
         let targetX = lerp(p.startX, p.baseX, eased)
         let targetY = lerp(p.startY, p.baseY, eased)
-
-        targetX += Math.sin(timeSec * p.dFreq + p.dPhase) * p.dAmp * driftScale
-        targetY += Math.cos(timeSec * (p.dFreq * 0.9) + p.dPhase * 1.13) * p.dAmp * driftScale
-
-        if (pointerInsideSup) {
-          const distToMouse = Math.hypot(p.baseX - mouseX, p.baseY - mouseY)
-          const proximity = Math.max(0, 1 - distToMouse / 220)
-          if (proximity > 0) {
-            const amp = p.gAmp * proximity * eased
-            targetX += Math.sin(timeSec * p.gFreq + p.gPhase) * amp
-            targetY += Math.cos(timeSec * (p.gFreq * 0.9) + p.gPhase * 1.2) * amp
-          }
-        }
 
         let disperseLocal = 0
         if (typeof p.disperseStart === "number" && typeof p.disperseEnd === "number") {
@@ -268,6 +256,25 @@ export default function Component() {
           const end = p.disperseEnd
           const span = Math.max(end - start, 0.0001)
           disperseLocal = clamp((disperseGlobal - start) / span, 0, 1)
+        }
+
+        const settled = clamp(Math.max(disperseLocal, settledFactor), 0, 1)
+
+        const driftScale = baseDriftScale * (1 - settled)
+
+        if (driftScale > 0) {
+          targetX += Math.sin(timeSec * p.dFreq + p.dPhase) * p.dAmp * driftScale
+          targetY += Math.cos(timeSec * (p.dFreq * 0.9) + p.dPhase * 1.13) * p.dAmp * driftScale
+        }
+
+        if (pointerInsideSup && settled < 1) {
+          const distToMouse = Math.hypot(p.baseX - mouseX, p.baseY - mouseY)
+          const proximity = Math.max(0, 1 - distToMouse / 220)
+          if (proximity > 0) {
+            const amp = p.gAmp * proximity * eased * (1 - settled)
+            targetX += Math.sin(timeSec * p.gFreq + p.gPhase) * amp
+            targetY += Math.cos(timeSec * (p.gFreq * 0.9) + p.gPhase * 1.2) * amp
+          }
         }
 
         const bgX = p.backgroundX ?? p.baseX
@@ -283,9 +290,10 @@ export default function Component() {
         let desiredX = targetX
         let desiredY = targetY
 
-        const interactive = (isTouchingRef.current || !("ontouchstart" in window)) && distance < maxDistance
+        const interactive =
+          settled < 1 && (isTouchingRef.current || !("ontouchstart" in window)) && distance < maxDistance
         if (interactive) {
-          const force = (maxDistance - distance) / maxDistance
+          const force = (maxDistance - distance) / maxDistance * (1 - settled)
           const angle = Math.atan2(dy, dx)
           const moveX = Math.cos(angle) * force * 60
           const moveY = Math.sin(angle) * force * 60
@@ -293,33 +301,37 @@ export default function Component() {
           desiredY = targetY - moveY
         }
 
-        p.x += (desiredX - p.x) * (interactive ? 0.1 : 0.08)
-        p.y += (desiredY - p.y) * (interactive ? 0.1 : 0.08)
+        p.x += (desiredX - p.x) * (interactive ? 0.1 : 0.06 + 0.04 * settled)
+        p.y += (desiredY - p.y) * (interactive ? 0.1 : 0.06 + 0.04 * settled)
 
         const twinkle = 0.65 + 0.35 * Math.sin(timeSec * (isMobile ? 1.6 : 2.2) + p.twinklePhase)
 
         ctx.fillStyle = `rgba(255,255,255,${twinkle})`
         ctx.fillRect(p.x, p.y, p.size, p.size)
 
-        p.life--
-        if (p.life <= 0) {
-          const newParticle = createParticle(false)
-          if (newParticle) {
-            particles[i] = newParticle
-          } else {
-            particles.splice(i, 1)
-            i--
+        if (settled < 1) {
+          p.life--
+          if (p.life <= 0) {
+            const newParticle = createParticle(false)
+            if (newParticle) {
+              particles[i] = newParticle
+            } else {
+              particles.splice(i, 1)
+              i--
+            }
           }
         }
       }
 
-      const baseParticleCount = 12000
-      const targetParticleCount = Math.floor(
-        baseParticleCount * Math.sqrt((canvas.width * canvas.height) / (1920 * 1080)),
-      )
-      while (particles.length < targetParticleCount) {
-        const newParticle = createParticle(false)
-        if (newParticle) particles.push(newParticle)
+      if (settledFactor < 1) {
+        const baseParticleCount = 12000
+        const targetParticleCount = Math.floor(
+          baseParticleCount * Math.sqrt((canvas.width * canvas.height) / (1920 * 1080)),
+        )
+        while (particles.length < targetParticleCount) {
+          const newParticle = createParticle(false)
+          if (newParticle) particles.push(newParticle)
+        }
       }
 
       animationFrameId = requestAnimationFrame(animate)
