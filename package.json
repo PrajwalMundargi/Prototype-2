@@ -2,6 +2,22 @@
   "name": "suplang-website",
   "version": "0.1.0",
   "private": true,
+  "description": "",
+  "homepage": "https://github.com/PrajwalMundargi/Prototype-2#readme",
+  "bugs": {
+    "url": "https://github.com/PrajwalMundargi/Prototype-2/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PrajwalMundargi/Prototype-2.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev",
@@ -49,9 +65,9 @@
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
     "next-themes": "^0.4.4",
-    "react": "^19",
+    "react": "^18.3.1",
     "react-day-picker": "9.8.0",
-    "react-dom": "^19",
+    "react-dom": "^18.3.1",
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
