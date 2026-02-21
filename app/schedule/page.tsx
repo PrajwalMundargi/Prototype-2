@@ -1,0 +1,15 @@
+export default function SchedulePage() {
+  return (
+    <main className="min-h-screen bg-black pt-24 px-6">
+      <div className="max-w-2xl mx-auto text-white/90">
+        <h1 className="text-3xl font-semibold text-white mb-4">Schedule</h1>
+        <p className="text-lg leading-relaxed mb-6">
+          Dates, timings, and tracks. The full schedule will be published here.
+        </p>
+        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-6">
+          <p className="text-white/70 text-sm">Schedule coming soon.</p>
+        </div>
+      </div>
+    </main>
+  )
+}

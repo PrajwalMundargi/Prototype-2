@@ -1,23 +1,15 @@
 "use client"
 
 import { useRef, useEffect, useState } from "react"
-import { useTheme } from "next-themes"
-import { toast } from "@/hooks/use-toast"
- 
 
 export default function Component() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const mousePositionRef = useRef({ x: 0, y: 0 })
   const isTouchingRef = useRef(false)
   const [isMobile, setIsMobile] = useState(false)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
-  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const startTimeRef = useRef(0)
   const supBoundsRef = useRef({ minX: 0, minY: 0, maxX: 0, maxY: 0, pad: 28 })
-  const [menuTop, setMenuTop] = useState<number | null>(null)
   const scrollProgressRef = useRef(0)
-  const { theme, setTheme } = useTheme()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -77,16 +69,6 @@ export default function Component() {
 
     let textImageData: ImageData | null = null
 
-    const updateMenuPosition = () => {
-      const b = supBoundsRef.current
-      if (b.maxY > b.minY && b.maxX > b.minX) {
-        const top = Math.min(b.maxY + b.pad + 40, window.innerHeight - 56)
-        setMenuTop(top)
-      } else {
-        setMenuTop(Math.round(window.innerHeight / 2 + 140))
-      }
-    }
-
     function createTextImage() {
       if (!ctx || !canvas) return 0
 
@@ -106,7 +88,7 @@ export default function Component() {
       setFont()
 
       const measure = () => {
-        const m = ctx.measureText("SUP!")
+        const m = ctx.measureText("LUMINUS")
         const textWidth = m.width
         const textHeight = (m.actualBoundingBoxAscent ?? 0) + (m.actualBoundingBoxDescent ?? 0) || fontSize * 1.1
         return { textWidth, textHeight }
@@ -120,7 +102,7 @@ export default function Component() {
         setFont()
       }
 
-      ctx.fillText("SUP!", canvas.width / 2, canvas.height / 2)
+      ctx.fillText("LUMINUS", canvas.width / 2, canvas.height / 2)
       ctx.restore()
 
       textImageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
@@ -209,7 +191,6 @@ export default function Component() {
         for (const p of particles) {
           initializeParticle(p)
         }
-        updateMenuPosition()
       }
     }
 
@@ -340,7 +321,6 @@ export default function Component() {
     const scale = createTextImage()
     startTimeRef.current = performance.now()
     createInitialParticles(true)
-    updateMenuPosition()
     animate()
 
     const handleResize = () => {
@@ -349,7 +329,6 @@ export default function Component() {
       particles = []
       startTimeRef.current = performance.now()
       createInitialParticles(true)
-      updateMenuPosition()
     }
 
     const handleMove = (x: number, y: number) => {
@@ -400,101 +379,13 @@ export default function Component() {
     }
   }, [isMobile])
 
-  useEffect(() => {
-    if (!isMenuOpen) return
-
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsMenuOpen(false)
-    }
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(target) &&
-        menuButtonRef.current &&
-        !menuButtonRef.current.contains(target)
-      ) {
-        setIsMenuOpen(false)
-      }
-    }
-
-    setTimeout(() => {
-      const firstItem = menuRef.current?.querySelector('[role="menuitem"]') as HTMLButtonElement | null
-      firstItem?.focus()
-    }, 0)
-
-    document.addEventListener("keydown", handleKey)
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      document.removeEventListener("keydown", handleKey)
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [isMenuOpen])
-
   return (
     <div className="fixed inset-0 w-full h-dvh flex flex-col items-center justify-center">
       <canvas
         ref={canvasRef}
         className="w-full h-full absolute top-0 left-0 touch-none"
-        aria-label="Interactive particle effect forming the text SUP!"
+        aria-label="Interactive particle effect forming the text LUMINUS"
       />
-      <div
-        className="absolute left-1/2 -translate-x-1/2 text-center z-10"
-        style={menuTop != null ? { top: menuTop } : undefined}
-      >
-        
-        {isMenuOpen ? (
-          <div
-            ref={menuRef}
-            id="main-menu"
-            role="menu"
-            aria-labelledby="menu-button"
-            className="mb-3 flex flex-col items-center gap-1"
-          >
-            
-            <button
-              role="menuitem"
-              className="font-mono text-white text-xs sm:text-base md:text-sm px-3 py-1 rounded bg-black/60"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              aria-label="Toggle theme"
-            >
-              toggle theme
-            </button>
-            <button
-              role="menuitem"
-              className="font-mono text-white text-xs sm:text-base md:text-sm px-3 py-1 rounded bg-black/60"
-              onClick={() =>
-                toast({
-                  title: "Hello",
-                  description: "This is a sample toast.",
-                })
-              }
-            >
-              show toast
-            </button>
-            <button
-              role="menuitem"
-              className="font-mono text-white text-xs sm:text-base md:text-sm px-3 py-1 rounded bg-black/60"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-        ) : null}
-        <button
-          id="menu-button"
-          ref={menuButtonRef}
-          type="button"
-          className="text-white text-xs sm:text-base md:text-sm uppercase"
-          aria-haspopup="menu"
-          aria-expanded={isMenuOpen}
-          aria-controls="main-menu"
-          onClick={() => setIsMenuOpen((v) => !v)}
-          style={{ fontFamily: '"Literature", serif' }}
-        >
-          MENU
-        </button>
-      </div>
     </div>
   )
 }
