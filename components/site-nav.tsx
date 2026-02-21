@@ -58,7 +58,7 @@ export function SiteNav() {
   return (
     <nav
       className={cn(
-        "fixed top-4 left-0 right-0 z-50 mx-auto w-fit max-w-[min(92vw,26rem)]",
+        "fixed top-8 left-0 right-0 z-50 mx-auto w-fit max-w-[min(92vw,26rem)] translate-x-6",
         "rounded-3xl",
         "border border-black/[0.06]",
         "bg-[#D1D8BE]",

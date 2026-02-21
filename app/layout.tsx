@@ -7,8 +7,8 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { SiteNav } from '@/components/site-nav'
-import logoImg from '@/assets/25_logo.png'
 import rnsitLogoImg from '@/assets/Rnsit_logo.png'
+import logo25Img from '@/assets/25_logo.png'
 
 export const metadata: Metadata = {
   title: 'Luminus Techfest',
@@ -51,7 +51,7 @@ html {
             aria-hidden
           >
             <Image
-              src={logoImg}
+              src={logo25Img}
               alt="Luminus Techfest"
               width={80}
               height={80}
