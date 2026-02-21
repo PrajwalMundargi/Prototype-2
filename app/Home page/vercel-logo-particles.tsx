@@ -1,391 +1,295 @@
 "use client"
+import { useEffect, useRef } from "react"
+import event_logo from "../../assets/luminus_logo.png"
 
-import { useRef, useEffect, useState } from "react"
-
-export default function Component() {
+export default function LuminusParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const mousePositionRef = useRef({ x: 0, y: 0 })
-  const isTouchingRef = useRef(false)
-  const [isMobile, setIsMobile] = useState(false)
-  const startTimeRef = useRef(0)
-  const supBoundsRef = useRef({ minX: 0, minY: 0, maxX: 0, maxY: 0, pad: 28 })
-  const scrollProgressRef = useRef(0)
 
   useEffect(() => {
-    const handleScroll = () => {
-      const doc = document.documentElement
-      const scrollTop = window.scrollY ?? doc.scrollTop
-      const maxScroll = Math.max(doc.scrollHeight - window.innerHeight, 1)
-      const progress = Math.min(Math.max(scrollTop / maxScroll, 0), 1)
-      scrollProgressRef.current = progress
-    }
+    const canvas = canvasRef.current!
+    const ctx = canvas.getContext("2d")!
 
-    handleScroll()
-    window.addEventListener("scroll", handleScroll, { passive: true })
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    const updateCanvasSize = () => {
+    
+    const resize = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
-      setIsMobile(window.innerWidth < 768) // Set mobile breakpoint
+    }
+    resize()
+    window.addEventListener("resize", resize)
+    document.documentElement.style.cursor = "none"
+    document.body.style.cursor = "none"
+
+  
+    type Particle = {
+      x: number; y: number
+      tx: number; ty: number
+      vx: number; vy: number
+      size: number; phase: number
+      bgx: number; bgy: number
+      r: number; g: number; b: number
     }
 
-    updateCanvasSize()
-
-    let particles: {
-      x: number
-      y: number
-      baseX: number
-      baseY: number
-      startX: number
-      startY: number
-      size: number
-      color: string
-      scatteredColor: string
-      life: number
-      isAWS: boolean
-      delay: number
-      dur: number
-      twinklePhase: number
-      gPhase: number
-      gFreq: number
-      gAmp: number
-      dPhase: number
-      dFreq: number
-      dAmp: number
-      backgroundX?: number
-      backgroundY?: number
-      disperseStart?: number
-      disperseEnd?: number
-    }[] = []
-
-    let textImageData: ImageData | null = null
-
-    function createTextImage() {
-      if (!ctx || !canvas) return 0
-
-      ctx.fillStyle = "white"
-      ctx.save()
-      ctx.textAlign = "center"
-      ctx.textBaseline = "middle"
-
-      const widthLimit = canvas.width * 0.88
-      const heightLimit = canvas.height * (isMobile ? 0.55 : 0.62)
-
-      const fontFamily = "system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif"
-      let fontSize = Math.min(canvas.width, canvas.height) * (isMobile ? 0.34 : 0.5)
-      fontSize = Math.max(fontSize, 48)
-
-      const setFont = () => (ctx.font = `800 ${Math.floor(fontSize)}px ${fontFamily}`)
-      setFont()
-
-      const measure = () => {
-        const m = ctx.measureText("LUMINUS")
-        const textWidth = m.width
-        const textHeight = (m.actualBoundingBoxAscent ?? 0) + (m.actualBoundingBoxDescent ?? 0) || fontSize * 1.1
-        return { textWidth, textHeight }
-      }
-
-      for (let guard = 0; guard < 500; guard++) {
-        const { textWidth, textHeight } = measure()
-        if (textWidth <= widthLimit && textHeight <= heightLimit) break
-        fontSize -= 2
-        if (fontSize <= 12) break
-        setFont()
-      }
-
-      ctx.fillText("LUMINUS", canvas.width / 2, canvas.height / 2)
-      ctx.restore()
-
-      textImageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      return 1
+    type Shockwave = {
+      x: number; y: number
+      radius: number
+      maxRadius: number
+      strength: number
+      age: number
     }
 
-    const initializeParticle = (p: (typeof particles)[number]) => {
-      if (!canvas) return
-      const { minY, maxY } = supBoundsRef.current
-      const spanY = Math.max(maxY - minY, 1)
-      const yRatio = (p.baseY - minY) / spanY
-
-      p.backgroundX = Math.random() * canvas.width
-      p.backgroundY = Math.random() * canvas.height
-
-      const start = yRatio * 0.7
-      const end = Math.min(start + 0.25, 1)
-      p.disperseStart = start
-      p.disperseEnd = end
-    }
-
-    function createParticle(scatter: boolean) {
-      if (!ctx || !canvas || !textImageData) return null
-      const data = textImageData.data
-
-      for (let attempt = 0; attempt < 200; attempt++) {
-        const tx = Math.floor(Math.random() * canvas.width)
-        const ty = Math.floor(Math.random() * canvas.height)
-        if (data[(ty * canvas.width + tx) * 4 + 3] > 128) {
-          const startX = scatter ? Math.random() * canvas.width : tx
-          const startY = scatter ? Math.random() * canvas.height : ty
-
-          const dur = (isMobile ? 3.2 : 5.5) + Math.random() * (isMobile ? 1.4 : 2.0)
-          const delay = (isMobile ? 0.8 : 1.2) + Math.random() * (isMobile ? 1.4 : 2.0)
-
-          const particle = {
-            x: startX,
-            y: startY,
-            startX,
-            startY,
-            baseX: tx,
-            baseY: ty,
-            size: 0.8 + Math.random() * 0.9,
-            color: "white",
-            scatteredColor: "#00DCFF",
-            isAWS: false,
-            life: Math.random() * 140 + 120,
-            delay,
-            dur,
-            twinklePhase: Math.random() * Math.PI * 2,
-            gPhase: Math.random() * Math.PI * 2,
-            gFreq: 2.2 + Math.random() * 1.6,
-            gAmp: 0.8 + Math.random() * 1.6,
-            dPhase: Math.random() * Math.PI * 2,
-            dFreq: 0.25 + Math.random() * 0.35,
-            dAmp: isMobile ? 3 + Math.random() * 4 : 5 + Math.random() * 7,
-          }
-          initializeParticle(particle)
-          return particle
-        }
-      }
-      return null
-    }
-
-    function createInitialParticles(scatter: boolean) {
-      const baseParticleCount = 12000
-      const particleCount = Math.floor(baseParticleCount * Math.sqrt((canvas.width * canvas.height) / (1920 * 1080)))
-      for (let i = 0; i < particleCount; i++) {
-        const particle = createParticle(scatter)
-        if (particle) particles.push(particle)
-      }
-      if (particles.length) {
-        let minX = Number.POSITIVE_INFINITY,
-          minY = Number.POSITIVE_INFINITY,
-          maxX = Number.NEGATIVE_INFINITY,
-          maxY = Number.NEGATIVE_INFINITY
-        for (const p of particles) {
-          if (p.baseX < minX) minX = p.baseX
-          if (p.baseY < minY) minY = p.baseY
-          if (p.baseX > maxX) maxX = p.baseX
-          if (p.baseY > maxY) maxY = p.baseY
-        }
-        supBoundsRef.current = { minX, minY, maxX, maxY, pad: isMobile ? 24 : 32 }
-        for (const p of particles) {
-          initializeParticle(p)
-        }
-      }
-    }
-
-    let animationFrameId: number
-
-    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
-    const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-    const easeOutQuint = (t: number) => 1 - Math.pow(1 - t, 5)
-
-    function animate() {
-      if (!ctx || !canvas) return
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.fillStyle = "black"
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      const now = performance.now()
-      const elapsed = (now - startTimeRef.current) / 1000
-
-      const { x: mouseX, y: mouseY } = mousePositionRef.current
-      const maxDistance = 220
-      const disperseGlobal = scrollProgressRef.current
-      const settledFactor = clamp((disperseGlobal - 0.9) / 0.1, 0, 1)
-
-      const b = supBoundsRef.current
-      const pointerInsideSup =
-        mouseX >= b.minX - b.pad && mouseX <= b.maxX + b.pad && mouseY >= b.minY - b.pad && mouseY <= b.maxY + b.pad
-
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i]
-
-        const tRaw = (elapsed - p.delay) / p.dur
-        const t = clamp(tRaw, 0, 1)
-        const eased = easeOutQuint(t)
-
-        const timeSec = now / 1000
-        const baseDriftScale = 1 - eased
-
-        let targetX = lerp(p.startX, p.baseX, eased)
-        let targetY = lerp(p.startY, p.baseY, eased)
-
-        let disperseLocal = 0
-        if (typeof p.disperseStart === "number" && typeof p.disperseEnd === "number") {
-          const start = p.disperseStart
-          const end = p.disperseEnd
-          const span = Math.max(end - start, 0.0001)
-          disperseLocal = clamp((disperseGlobal - start) / span, 0, 1)
-        }
-
-        const settled = clamp(Math.max(disperseLocal, settledFactor), 0, 1)
-
-        const driftScale = baseDriftScale * (1 - settled)
-
-        if (driftScale > 0) {
-          targetX += Math.sin(timeSec * p.dFreq + p.dPhase) * p.dAmp * driftScale
-          targetY += Math.cos(timeSec * (p.dFreq * 0.9) + p.dPhase * 1.13) * p.dAmp * driftScale
-        }
-
-        if (pointerInsideSup && settled < 1) {
-          const distToMouse = Math.hypot(p.baseX - mouseX, p.baseY - mouseY)
-          const proximity = Math.max(0, 1 - distToMouse / 220)
-          if (proximity > 0) {
-            const amp = p.gAmp * proximity * eased * (1 - settled)
-            targetX += Math.sin(timeSec * p.gFreq + p.gPhase) * amp
-            targetY += Math.cos(timeSec * (p.gFreq * 0.9) + p.gPhase * 1.2) * amp
-          }
-        }
-
-        const bgX = p.backgroundX ?? p.baseX
-        const bgY = p.backgroundY ?? p.baseY
-
-        targetX = lerp(targetX, bgX, disperseLocal)
-        targetY = lerp(targetY, bgY, disperseLocal)
-
-        const dx = mouseX - p.x
-        const dy = mouseY - p.y
-        const distance = Math.hypot(dx, dy)
-
-        let desiredX = targetX
-        let desiredY = targetY
-
-        const interactive =
-          settled < 1 && (isTouchingRef.current || !("ontouchstart" in window)) && distance < maxDistance
-        if (interactive) {
-          const force = (maxDistance - distance) / maxDistance * (1 - settled)
-          const angle = Math.atan2(dy, dx)
-          const moveX = Math.cos(angle) * force * 60
-          const moveY = Math.sin(angle) * force * 60
-          desiredX = targetX - moveX
-          desiredY = targetY - moveY
-        }
-
-        p.x += (desiredX - p.x) * (interactive ? 0.1 : 0.06 + 0.04 * settled)
-        p.y += (desiredY - p.y) * (interactive ? 0.1 : 0.06 + 0.04 * settled)
-
-        const twinkle = 0.65 + 0.35 * Math.sin(timeSec * (isMobile ? 1.6 : 2.2) + p.twinklePhase)
-
-        ctx.fillStyle = `rgba(255,255,255,${twinkle})`
-        ctx.fillRect(p.x, p.y, p.size, p.size)
-
-        if (settled < 1) {
-          p.life--
-          if (p.life <= 0) {
-            const newParticle = createParticle(false)
-            if (newParticle) {
-              particles[i] = newParticle
-            } else {
-              particles.splice(i, 1)
-              i--
-            }
-          }
-        }
-      }
-
-      if (settledFactor < 1) {
-        const baseParticleCount = 12000
-        const targetParticleCount = Math.floor(
-          baseParticleCount * Math.sqrt((canvas.width * canvas.height) / (1920 * 1080)),
-        )
-        while (particles.length < targetParticleCount) {
-          const newParticle = createParticle(false)
-          if (newParticle) particles.push(newParticle)
-        }
-      }
-
-      animationFrameId = requestAnimationFrame(animate)
-    }
-
-    const scale = createTextImage()
-    startTimeRef.current = performance.now()
-    createInitialParticles(true)
-    animate()
-
-    const handleResize = () => {
-      updateCanvasSize()
-      createTextImage()
-      particles = []
-      startTimeRef.current = performance.now()
-      createInitialParticles(true)
-    }
-
-    const handleMove = (x: number, y: number) => {
-      mousePositionRef.current = { x, y }
-    }
+   
+    const mouse = { x: -9999, y: -9999 }
+    const shockwaves: Shockwave[] = []
+    let clickGlow = 0     
+    let starRotation = 0  
 
     const handleMouseMove = (e: MouseEvent) => {
-      handleMove(e.clientX, e.clientY)
+      mouse.x = e.clientX
+      mouse.y = e.clientY
     }
 
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length > 0) {
-        e.preventDefault()
-        handleMove(e.touches[0].clientX, e.touches[0].clientY)
-      }
+    const handleClick = (e: MouseEvent) => {
+      clickGlow = 1.0  
+      shockwaves.push({
+        x: e.clientX,
+        y: e.clientY,
+        radius: 0,
+        maxRadius: 300,
+        strength: 18,
+        age: 0,
+      })
     }
 
-    const handleTouchStart = () => {
-      isTouchingRef.current = true
-    }
-
-    const handleTouchEnd = () => {
-      isTouchingRef.current = false
-      mousePositionRef.current = { x: 0, y: 0 }
-    }
-
-    const handleMouseLeave = () => {
-      if (!("ontouchstart" in window)) {
-        mousePositionRef.current = { x: 0, y: 0 }
-      }
-    }
-
-    window.addEventListener("resize", handleResize)
     window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("touchmove", handleTouchMove, { passive: false })
-    canvas.addEventListener("mouseleave", handleMouseLeave)
-    window.addEventListener("touchstart", handleTouchStart)
-    window.addEventListener("touchend", handleTouchEnd)
+    window.addEventListener("click", handleClick)
+
+    let particles: Particle[] = []
+    let imageData: ImageData | null = null
+    let scrollProgress = 0
+
+    
+    const handleScroll = () => {
+      const doc = document.documentElement
+      const max = doc.scrollHeight - window.innerHeight
+      scrollProgress = Math.min(window.scrollY / max, 1)
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true })
+
+   
+    function loadLogo(): Promise<void> {
+      return new Promise((resolve) => {
+        const img = new Image()
+        img.src = event_logo.src
+        img.onload = () => {
+          const off = document.createElement("canvas")
+          const offCtx = off.getContext("2d")!
+          off.width = canvas.width
+          off.height = canvas.height
+          const scale = Math.min(off.width / img.width, off.height / img.height) * 1.15
+          const w = img.width * scale
+          const h = img.height * scale
+          const x = (off.width - w) / 2
+          const y = (off.height - h) / 2 - off.height * 0.1
+          offCtx.drawImage(img, x, y, w, h)
+          imageData = offCtx.getImageData(0, 0, off.width, off.height)
+          resolve()
+        }
+      })
+    }
+
+   
+    function createParticles() {
+      if (!imageData) return
+      const data = imageData.data
+      particles = []
+      const gap = 3
+      for (let y = 0; y < canvas.height; y += gap) {
+        for (let x = 0; x < canvas.width; x += gap) {
+          const i = (y * canvas.width + x) * 4
+          const r = data[i], g = data[i + 1], b = data[i + 2], alpha = data[i + 3]
+          if (alpha > 40) {
+            const isTextPixel = Math.abs(r - g) < 20 && Math.abs(r - b) < 20 && Math.abs(g - b) < 20 && r > 100
+            const wf = isTextPixel ? 0.75 : 0
+            particles.push({
+              x: Math.random() * canvas.width,
+              y: Math.random() * canvas.height,
+              tx: x, ty: y, vx: 0, vy: 0,
+              size: Math.random() * 1.6 + 0.5,
+              phase: Math.random() * Math.PI * 2,
+              bgx: Math.random() * canvas.width,
+              bgy: Math.random() * canvas.height,
+              r: Math.min(255, r + (255 - r) * wf),
+              g: Math.min(255, g + (255 - g) * wf),
+              b: Math.min(255, b + (255 - b) * wf),
+            })
+          }
+        }
+      }
+    }
+
+   
+    function drawStar(cx: number, cy: number, points: number, outer: number, inner: number, angle: number) {
+      ctx.beginPath()
+      for (let i = 0; i < points * 2; i++) {
+        const r = i % 2 === 0 ? outer : inner
+        const a = (i * Math.PI) / points + angle
+        if (i === 0) ctx.moveTo(cx + r * Math.sin(a), cy - r * Math.cos(a))
+        else ctx.lineTo(cx + r * Math.sin(a), cy - r * Math.cos(a))
+      }
+      ctx.closePath()
+    }
+
+    function drawCursor() {
+      if (mouse.x < 0) return
+      const cx = mouse.x
+      const cy = mouse.y
+
+      starRotation += 0.012  // gentle idle spin
+
+    
+      if (clickGlow > 0) clickGlow -= 0.03
+
+      const glow = Math.max(clickGlow, 0)
+      const baseSize = 7
+      const glowSize = baseSize + glow * 22
+
+      ctx.save()
+
+   
+      if (glow > 0) {
+        const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowSize * 3)
+        bloom.addColorStop(0, `rgba(255, 220, 255, ${glow * 0.5})`)
+        bloom.addColorStop(0.4, `rgba(180, 100, 255, ${glow * 0.25})`)
+        bloom.addColorStop(1, `rgba(100, 50, 255, 0)`)
+        ctx.fillStyle = bloom
+        ctx.beginPath()
+        ctx.arc(cx, cy, glowSize * 3, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      
+      const ambient = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseSize * 2.5)
+      ambient.addColorStop(0, `rgba(220, 180, 255, ${0.25 + glow * 0.4})`)
+      ambient.addColorStop(1, `rgba(150, 80, 255, 0)`)
+      ctx.fillStyle = ambient
+      ctx.beginPath()
+      ctx.arc(cx, cy, baseSize * 2.5, 0, Math.PI * 2)
+      ctx.fill()
+
+      
+      const currentSize = baseSize + glow * 5
+
+      // Spike cross (long thin spikes at 0/90/180/270)
+      drawStar(cx, cy, 4, currentSize * 1.8, currentSize * 0.15, starRotation)
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.85 + glow * 0.15})`
+      ctx.fill()
+
+      // Small inner diamond
+      drawStar(cx, cy, 4, currentSize * 0.7, currentSize * 0.3, starRotation + Math.PI / 4)
+      ctx.fillStyle = `rgba(220, 180, 255, ${0.9 + glow * 0.1})`
+      ctx.fill()
+
+      // Bright center dot
+      ctx.beginPath()
+      ctx.arc(cx, cy, 1.5 + glow * 1.5, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(255, 255, 255, 1)`
+      ctx.fill()
+
+      ctx.restore()
+    }
+
+    
+    function drawShockwaveRings() {
+      for (const sw of shockwaves) {
+        const progress = sw.radius / sw.maxRadius
+        const alpha = (1 - progress) * 0.12
+        ctx.beginPath()
+        ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(180, 120, 255, ${alpha * 0.5})`
+        ctx.lineWidth = 0.5 * (1 - progress)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(sw.x, sw.y, sw.radius * 0.92, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`
+        ctx.lineWidth = 0.5 * (1 - progress)
+        ctx.stroke()
+      }
+    }
+
+    
+    function animate(time: number) {
+      ctx.fillStyle = "#000"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Expand & cull shockwaves
+      for (const sw of shockwaves) { sw.radius += 12; sw.age++ }
+      for (let i = shockwaves.length - 1; i >= 0; i--) {
+        if (shockwaves[i].radius >= shockwaves[i].maxRadius) shockwaves.splice(i, 1)
+      }
+
+      for (const p of particles) {
+        const disperse = scrollProgress
+        const targetX = p.tx * (1 - disperse) + p.bgx * disperse
+        const targetY = p.ty * (1 - disperse) + p.bgy * disperse
+
+        
+        for (const sw of shockwaves) {
+          const dx = p.x - sw.x
+          const dy = p.y - sw.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          const distFromFront = Math.abs(dist - sw.radius)
+          if (distFromFront < 55 && dist > 0) {
+            const falloff = 1 - distFromFront / 55
+            const force = falloff * sw.strength / (dist * 0.08 + 1)
+            p.vx += (dx / dist) * force
+            p.vy += (dy / dist) * force
+          }
+        }
+
+        p.vx += (targetX - p.x) * 0.08
+        p.vy += (targetY - p.y) * 0.08
+        p.vx *= 0.7
+        p.vy *= 0.7
+        p.x += p.vx
+        p.y += p.vy
+
+        const twinkle = 0.6 + 0.4 * Math.sin(time * 0.003 + p.phase)
+        ctx.fillStyle = `rgba(${Math.round(p.r)},${Math.round(p.g)},${Math.round(p.b)},${twinkle})`
+        ctx.fillRect(p.x, p.y, p.size, p.size)
+      }
+
+      drawShockwaveRings()
+      drawCursor()   // always on top
+
+      requestAnimationFrame(animate)
+    }
+
+  
+    async function init() {
+      await loadLogo()
+      createParticles()
+      animate(0)
+    }
+    init()
 
     return () => {
-      window.removeEventListener("resize", handleResize)
+      window.removeEventListener("resize", resize)
+      document.documentElement.style.cursor = ""
+      document.body.style.cursor = ""
+      window.removeEventListener("scroll", handleScroll)
       window.removeEventListener("mousemove", handleMouseMove)
-      window.removeEventListener("touchmove", handleTouchMove)
-      canvas.removeEventListener("mouseleave", handleMouseLeave)
-      window.removeEventListener("touchstart", handleTouchStart)
-      window.removeEventListener("touchend", handleTouchEnd)
-      cancelAnimationFrame(animationFrameId)
+      window.removeEventListener("click", handleClick)
     }
-  }, [isMobile])
+  }, [])
 
   return (
-    <div className="fixed inset-0 w-full h-dvh flex flex-col items-center justify-center">
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full absolute top-0 left-0 touch-none"
-        aria-label="Interactive particle effect forming the text LUMINUS"
-      />
-    </div>
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "fixed", top: 0, left: 0,
+        width: "100vw", height: "100vh",
+        cursor: "none",
+      }}
+    />
   )
 }
