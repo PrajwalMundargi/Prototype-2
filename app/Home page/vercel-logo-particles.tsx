@@ -9,7 +9,7 @@ export default function LuminusParticles() {
     const canvas = canvasRef.current!
     const ctx = canvas.getContext("2d")!
 
-    
+
     const resize = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
@@ -19,7 +19,7 @@ export default function LuminusParticles() {
     document.documentElement.style.cursor = "none"
     document.body.style.cursor = "none"
 
-  
+
     type Particle = {
       x: number; y: number
       tx: number; ty: number
@@ -37,11 +37,11 @@ export default function LuminusParticles() {
       age: number
     }
 
-   
+
     const mouse = { x: -9999, y: -9999 }
     const shockwaves: Shockwave[] = []
-    let clickGlow = 0     
-    let starRotation = 0  
+    let clickGlow = 0
+    let starRotation = 0
 
     const handleMouseMove = (e: MouseEvent) => {
       mouse.x = e.clientX
@@ -49,7 +49,7 @@ export default function LuminusParticles() {
     }
 
     const handleClick = (e: MouseEvent) => {
-      clickGlow = 1.0  
+      clickGlow = 1.0
       shockwaves.push({
         x: e.clientX,
         y: e.clientY,
@@ -67,7 +67,7 @@ export default function LuminusParticles() {
     let imageData: ImageData | null = null
     let scrollProgress = 0
 
-    
+
     const handleScroll = () => {
       const doc = document.documentElement
       const max = doc.scrollHeight - window.innerHeight
@@ -75,7 +75,7 @@ export default function LuminusParticles() {
     }
     window.addEventListener("scroll", handleScroll, { passive: true })
 
-   
+
     function loadLogo(): Promise<void> {
       return new Promise((resolve) => {
         const img = new Image()
@@ -85,7 +85,8 @@ export default function LuminusParticles() {
           const offCtx = off.getContext("2d")!
           off.width = canvas.width
           off.height = canvas.height
-          const scale = Math.min(off.width / img.width, off.height / img.height) * 1.15
+          const scaleMultiplier = window.innerWidth < 768 ? 0.8 : 1.15
+          const scale = Math.min(off.width / img.width, off.height / img.height) * scaleMultiplier
           const w = img.width * scale
           const h = img.height * scale
           const x = (off.width - w) / 2
@@ -97,7 +98,7 @@ export default function LuminusParticles() {
       })
     }
 
-   
+
     function createParticles() {
       if (!imageData) return
       const data = imageData.data
@@ -127,7 +128,7 @@ export default function LuminusParticles() {
       }
     }
 
-   
+
     function drawStar(cx: number, cy: number, points: number, outer: number, inner: number, angle: number) {
       ctx.beginPath()
       for (let i = 0; i < points * 2; i++) {
@@ -146,7 +147,7 @@ export default function LuminusParticles() {
 
       starRotation += 0.012  // gentle idle spin
 
-    
+
       if (clickGlow > 0) clickGlow -= 0.03
 
       const glow = Math.max(clickGlow, 0)
@@ -155,7 +156,7 @@ export default function LuminusParticles() {
 
       ctx.save()
 
-   
+
       if (glow > 0) {
         const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowSize * 3)
         bloom.addColorStop(0, `rgba(255, 220, 255, ${glow * 0.5})`)
@@ -167,7 +168,7 @@ export default function LuminusParticles() {
         ctx.fill()
       }
 
-      
+
       const ambient = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseSize * 2.5)
       ambient.addColorStop(0, `rgba(220, 180, 255, ${0.25 + glow * 0.4})`)
       ambient.addColorStop(1, `rgba(150, 80, 255, 0)`)
@@ -176,7 +177,7 @@ export default function LuminusParticles() {
       ctx.arc(cx, cy, baseSize * 2.5, 0, Math.PI * 2)
       ctx.fill()
 
-      
+
       const currentSize = baseSize + glow * 5
 
       // Spike cross (long thin spikes at 0/90/180/270)
@@ -198,7 +199,7 @@ export default function LuminusParticles() {
       ctx.restore()
     }
 
-    
+
     function drawShockwaveRings() {
       for (const sw of shockwaves) {
         const progress = sw.radius / sw.maxRadius
@@ -216,10 +217,9 @@ export default function LuminusParticles() {
       }
     }
 
-    
+
     function animate(time: number) {
-      ctx.fillStyle = "#000"
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       // Expand & cull shockwaves
       for (const sw of shockwaves) { sw.radius += 12; sw.age++ }
@@ -232,7 +232,7 @@ export default function LuminusParticles() {
         const targetX = p.tx * (1 - disperse) + p.bgx * disperse
         const targetY = p.ty * (1 - disperse) + p.bgy * disperse
 
-        
+
         for (const sw of shockwaves) {
           const dx = p.x - sw.x
           const dy = p.y - sw.y
@@ -264,7 +264,7 @@ export default function LuminusParticles() {
       requestAnimationFrame(animate)
     }
 
-  
+
     async function init() {
       await loadLogo()
       createParticles()
@@ -288,6 +288,7 @@ export default function LuminusParticles() {
       style={{
         position: "fixed", top: 0, left: 0,
         width: "100vw", height: "100vh",
+        zIndex: 2,
         cursor: "none",
       }}
     />
