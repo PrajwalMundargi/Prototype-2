@@ -7,7 +7,6 @@ import * as THREE from "three";
 
 const MODEL_PATHS = [
     "/moon_rock_03_4k.gltf",
-    "/black_hole.gltf",
     "/scene.gltf",
     "/rocket.gltf",
 ];
@@ -15,8 +14,7 @@ const MODEL_PATHS = [
 const MODEL_CONFIGS: Record<string, { baseScale: number }> = {
     "/moon_rock_03_4k.gltf": { baseScale: 1 },
     "/scene.gltf": { baseScale: 0.015 },
-    "/rocket.gltf": { baseScale: 0.0008 },
-    "/black_hole.gltf": { baseScale: 0.2 },
+    "/rocket.gltf": { baseScale: 0.0008 }
     // significantly reduce scale for this model
 };
 
@@ -62,7 +60,7 @@ export function RandomObjects() {
 
     useEffect(() => {
         // Generate random objects after mount to avoid hydration mismatch
-        const newObjects = Array.from({ length: 6 }).map((_, i) => {
+        const newObjects = Array.from({ length: 8 }).map((_, i) => {
             // Start objects outside the visible screen (edges are around +/- 25 for x, +/- 20 for y)
             const edge = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
             let startX = 0;
