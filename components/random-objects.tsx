@@ -59,10 +59,17 @@ MODEL_PATHS.forEach((path) => useGLTF.preload(path));
 
 export function RandomObjects() {
     const [objects, setObjects] = useState<{ id: number; modelPath: string; startPos: [number, number, number]; scale: number; speed: number; direction: [number, number, number] }[]>([]);
+    const [visible, setVisible] = useState(true);
 
     useEffect(() => {
-        // Generate random objects after mount to avoid hydration mismatch
-        const newObjects = Array.from({ length: 6 }).map((_, i) => {
+        const onVisibilityChange = () => setVisible(!document.hidden);
+        document.addEventListener("visibilitychange", onVisibilityChange);
+        return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    }, []);
+
+    useEffect(() => {
+        const count = typeof window !== "undefined" && window.innerWidth < 768 ? 2 : 4;
+        const newObjects = Array.from({ length: count }).map((_, i) => {
             // Start objects outside the visible screen (edges are around +/- 25 for x, +/- 20 for y)
             const edge = Math.floor(Math.random() * 4); // 0: top, 1: right, 2: bottom, 3: left
             let startX = 0;
@@ -111,11 +118,11 @@ export function RandomObjects() {
         setObjects(newObjects);
     }, []);
 
-    if (objects.length === 0) return null;
+    if (objects.length === 0 || !visible) return null;
 
     return (
-        <div className="fixed inset-0 pointer-events-none z-[1] overflow-hidden">
-            <Canvas camera={{ position: [0, 0, 15], fov: 45 }}>
+        <div className="fixed inset-0 pointer-events-none z-[2] overflow-hidden" aria-hidden>
+            <Canvas camera={{ position: [0, 0, 15], fov: 45 }} frameloop="always" dpr={[1, 2]}>
                 <ambientLight intensity={0} />
                 <directionalLight position={[0, 10, 0]} intensity={1} />
                 <directionalLight position={[-10, -10, -5]} intensity={3} color="#0055FF" />

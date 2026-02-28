@@ -1,9 +1,22 @@
 "use client"
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import event_logo from "../../assets/luminus_logo.png"
 
-export default function LuminusParticles() {
+interface LuminusParticlesProps {
+  /** When true, particles start scattered (no scroll needed). Default false. */
+  startDispersed?: boolean
+  /** When false, normal cursor is shown and no custom cursor/shockwaves. Default true. */
+  hideCursor?: boolean
+  /** Pixel step when sampling logo for particles; larger = fewer particles. Default 3. */
+  particleGap?: number
+}
+
+export default function LuminusParticles({ startDispersed = false, hideCursor = true, particleGap = 3 }: LuminusParticlesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const options = useMemo(
+    () => ({ startDispersed, hideCursor, particleGap }),
+    [startDispersed, hideCursor, particleGap]
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -11,13 +24,18 @@ export default function LuminusParticles() {
 
 
     const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+      const w = window.innerWidth
+      const h = window.innerHeight
+      const dpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2)
+      canvas.width = w * dpr
+      canvas.height = h * dpr
     }
     resize()
     window.addEventListener("resize", resize)
-    document.documentElement.style.cursor = "none"
-    document.body.style.cursor = "none"
+    if (hideCursor) {
+      document.documentElement.style.cursor = "none"
+      document.body.style.cursor = "none"
+    }
 
 
     type Particle = {
@@ -60,8 +78,10 @@ export default function LuminusParticles() {
       })
     }
 
-    window.addEventListener("mousemove", handleMouseMove)
-    window.addEventListener("click", handleClick)
+    if (hideCursor) {
+      window.addEventListener("mousemove", handleMouseMove)
+      window.addEventListener("click", handleClick)
+    }
 
     let particles: Particle[] = []
     let imageData: ImageData | null = null
@@ -69,11 +89,17 @@ export default function LuminusParticles() {
 
 
     const handleScroll = () => {
+      if (startDispersed) return
       const doc = document.documentElement
       const max = doc.scrollHeight - window.innerHeight
-      scrollProgress = Math.min(window.scrollY / max, 1)
+      scrollProgress = max > 0 ? Math.min(window.scrollY / max, 1) : 1
     }
-    window.addEventListener("scroll", handleScroll, { passive: true })
+    if (!startDispersed) {
+      scrollProgress = 0
+      window.addEventListener("scroll", handleScroll, { passive: true })
+    } else {
+      scrollProgress = 1
+    }
 
 
     function loadLogo(): Promise<void> {
@@ -103,7 +129,7 @@ export default function LuminusParticles() {
       if (!imageData) return
       const data = imageData.data
       particles = []
-      const gap = 3
+      const gap = Math.max(2, particleGap)
       for (let y = 0; y < canvas.height; y += gap) {
         for (let x = 0; x < canvas.width; x += gap) {
           const i = (y * canvas.width + x) * 4
@@ -218,7 +244,16 @@ export default function LuminusParticles() {
     }
 
 
+    let rafId = 0
+    let visible = !document.hidden
+    const onVisibilityChange = () => {
+      visible = !document.hidden
+      if (visible) rafId = requestAnimationFrame(animate)
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange)
+
     function animate(time: number) {
+      if (!visible) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       // Expand & cull shockwaves
@@ -258,10 +293,12 @@ export default function LuminusParticles() {
         ctx.fillRect(p.x, p.y, p.size, p.size)
       }
 
-      drawShockwaveRings()
-      drawCursor()   // always on top
+      if (hideCursor) {
+        drawShockwaveRings()
+        drawCursor()   // always on top
+      }
 
-      requestAnimationFrame(animate)
+      rafId = requestAnimationFrame(animate)
     }
 
 
@@ -273,14 +310,19 @@ export default function LuminusParticles() {
     init()
 
     return () => {
+      visible = false
+      cancelAnimationFrame(rafId)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
       window.removeEventListener("resize", resize)
-      document.documentElement.style.cursor = ""
-      document.body.style.cursor = ""
-      window.removeEventListener("scroll", handleScroll)
-      window.removeEventListener("mousemove", handleMouseMove)
-      window.removeEventListener("click", handleClick)
+      if (hideCursor) {
+        document.documentElement.style.cursor = ""
+        document.body.style.cursor = ""
+        window.removeEventListener("mousemove", handleMouseMove)
+        window.removeEventListener("click", handleClick)
+      }
+      if (!startDispersed) window.removeEventListener("scroll", handleScroll)
     }
-  }, [])
+  }, [options])
 
   return (
     <canvas
@@ -288,8 +330,8 @@ export default function LuminusParticles() {
       style={{
         position: "fixed", top: 0, left: 0,
         width: "100vw", height: "100vh",
-        zIndex: 2,
-        cursor: "none",
+        zIndex: 0,
+        cursor: hideCursor ? "none" : "default",
       }}
     />
   )
