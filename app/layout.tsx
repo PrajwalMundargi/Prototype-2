@@ -16,6 +16,7 @@ export const metadata: Metadata = {
   description:
     "Luminus Techfest — Register for events, explore the schedule, and be part of the experience.",
 }
+import { SiteBackground } from "@/components/site-background"
 
 export default function RootLayout({
   children,
@@ -28,19 +29,22 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${GeistSans.variable} ${GeistMono.variable}`}
     >
-      <body className={`${GeistSans.className} antialiased`}>
+      <body suppressHydrationWarning className={`${GeistSans.className} antialiased text-white`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
+          {/* Universal Site Background */}
+          <SiteBackground />
+
           {/* Navigation */}
           <SiteNav />
 
           {/* Left Logo */}
           <div
-            className="fixed top-4 left-4 z-50 flex h-14 sm:h-20 items-center justify-center pointer-events-none"
+            className="fixed top-4 left-4 z-50 flex h-10 sm:h-20 items-center justify-center pointer-events-none"
             aria-hidden
           >
             <Image
@@ -49,13 +53,13 @@ export default function RootLayout({
               width={80}
               height={80}
               priority
-              className="h-14 w-auto max-h-14 object-contain sm:h-20 sm:max-h-20"
+              className="h-10 w-auto max-h-10 object-contain sm:h-20 sm:max-h-20"
             />
           </div>
 
           {/* Right Logo */}
           <div
-            className="fixed top-4 right-4 z-50 flex h-14 sm:h-20 items-center justify-center pointer-events-none"
+            className="fixed top-4 right-4 z-50 flex h-10 sm:h-20 items-center justify-center pointer-events-none"
             aria-hidden
           >
             <Image
@@ -64,7 +68,7 @@ export default function RootLayout({
               width={80}
               height={80}
               priority
-              className="h-14 w-auto max-h-14 object-contain sm:h-20 sm:max-h-20"
+              className="h-10 w-auto max-h-10 object-contain sm:h-20 sm:max-h-20"
             />
           </div>
 
